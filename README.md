@@ -1,0 +1,4 @@
+ArduinoISP
+==========
+
+ArduinoISP slow SCK
