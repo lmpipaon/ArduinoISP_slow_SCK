@@ -66,12 +66,134 @@
 *
 **************************************************************/
 
-
+//  -----------   code included to change sck    ------------------
 #define BAUD 1200       // Serial bau
 #define PRESCALER 128
 
 uint32_t _F_CPU =  F_CPU / PRESCALER;
-// -----------------------------------------------
+
+
+
+#include <util/delay_basic.h>
+
+
+void new_prescaler(uint8_t p)
+{
+    _F_CPU =  F_CPU / p;  
+
+    clk_prescaler( p );
+
+    Serial_baud(BAUD);
+}
+
+
+
+
+// delay independent of the clock frequency
+void
+delay_ms(double __ms)
+{
+	uint16_t __ticks;
+	double __tmp = ((_F_CPU) / 4e3) * __ms;
+	if (__tmp < 1.0)
+		__ticks = 1;
+	else if (__tmp > 65535)
+	{
+		//	__ticks = requested delay in 1/10 ms
+		__ticks = (uint16_t) (__ms * 10.0);
+		while(__ticks)
+		{
+			// wait 1/10 ms
+			_delay_loop_2(((_F_CPU) / 4e3) / 10);
+			__ticks --;
+		}
+		return;
+	}
+	else
+		__ticks = (uint16_t)__tmp;
+	_delay_loop_2(__ticks);
+}
+
+
+
+// keep baud with clock frequency change
+void Serial_baud(unsigned long baud)
+{
+  uint16_t baud_setting;
+  bool use_u2x = true;
+
+#if F_CPU == 16000000UL
+  // hardcoded exception for compatibility with the bootloader shipped
+  // with the Duemilanove and previous boards and the firmware on the 8U2
+  // on the Uno and Mega 2560.
+  if (baud == 57600) {
+    use_u2x = false;
+  }
+#endif
+
+try_again:
+  
+  if (use_u2x) {
+    UCSR0A = 1 << U2X0;
+    baud_setting = (_F_CPU / 4 / baud - 1) / 2;
+  } else {
+    UCSR0A = 0;
+    baud_setting = (_F_CPU / 8 / baud - 1) / 2;
+  }
+  
+  if ((baud_setting > 4095) && use_u2x)
+  {
+    use_u2x = false;
+    goto try_again;
+  }
+
+  // assign the baud_setting, a.k.a. ubbr (USART Baud Rate Register)
+  UBRR0H = baud_setting >> 8;
+  UBRR0L = baud_setting;
+}
+
+
+
+// change prescaler
+void clk_prescaler( uint8_t p )
+{
+    switch(p)
+    {
+        case 1:
+            p = 0;
+            break;
+        case 2:
+            p = 1;
+            break;
+        case 4:
+            p = 2;
+            break;
+        case 8:
+            p = 3;
+            break;
+        case 16:
+            p = 4;
+            break;
+        case 32:
+            p = 5;
+            break;
+        case 64:
+            p = 6;
+            break;
+        case 128:
+            p = 7;
+            break;
+        case 256:
+            p = 8;
+            break;
+    }
+
+    cli();
+    CLKPR = 0b10000000;
+    CLKPR = p;
+    sei();
+}
+//------------------------------------------------------
 
 
 
@@ -592,125 +714,3 @@ int avrisp() {
 }
 
 
-
-//  -----------   code included to change sck    ------------------
-#include <util/delay_basic.h>
-
-
-void new_prescaler(uint8_t p)
-{
-    _F_CPU =  F_CPU / p;  
-
-    clk_prescaler( p );
-
-    Serial_baud(BAUD);
-}
-
-
-
-
-// delay independent of the clock frequency
-void
-delay_ms(double __ms)
-{
-	uint16_t __ticks;
-	double __tmp = ((_F_CPU) / 4e3) * __ms;
-	if (__tmp < 1.0)
-		__ticks = 1;
-	else if (__tmp > 65535)
-	{
-		//	__ticks = requested delay in 1/10 ms
-		__ticks = (uint16_t) (__ms * 10.0);
-		while(__ticks)
-		{
-			// wait 1/10 ms
-			_delay_loop_2(((_F_CPU) / 4e3) / 10);
-			__ticks --;
-		}
-		return;
-	}
-	else
-		__ticks = (uint16_t)__tmp;
-	_delay_loop_2(__ticks);
-}
-
-
-
-// keep baud with clock frequency change
-void Serial_baud(unsigned long baud)
-{
-  uint16_t baud_setting;
-  bool use_u2x = true;
-
-#if F_CPU == 16000000UL
-  // hardcoded exception for compatibility with the bootloader shipped
-  // with the Duemilanove and previous boards and the firmware on the 8U2
-  // on the Uno and Mega 2560.
-  if (baud == 57600) {
-    use_u2x = false;
-  }
-#endif
-
-try_again:
-  
-  if (use_u2x) {
-    UCSR0A = 1 << U2X0;
-    baud_setting = (_F_CPU / 4 / baud - 1) / 2;
-  } else {
-    UCSR0A = 0;
-    baud_setting = (_F_CPU / 8 / baud - 1) / 2;
-  }
-  
-  if ((baud_setting > 4095) && use_u2x)
-  {
-    use_u2x = false;
-    goto try_again;
-  }
-
-  // assign the baud_setting, a.k.a. ubbr (USART Baud Rate Register)
-  UBRR0H = baud_setting >> 8;
-  UBRR0L = baud_setting;
-}
-
-
-
-// change prescaler
-void clk_prescaler( uint8_t p )
-{
-    switch(p)
-    {
-        case 1:
-            p = 0;
-            break;
-        case 2:
-            p = 1;
-            break;
-        case 4:
-            p = 2;
-            break;
-        case 8:
-            p = 3;
-            break;
-        case 16:
-            p = 4;
-            break;
-        case 32:
-            p = 5;
-            break;
-        case 64:
-            p = 6;
-            break;
-        case 128:
-            p = 7;
-            break;
-        case 256:
-            p = 8;
-            break;
-    }
-
-    cli();
-    CLKPR = 0b10000000;
-    CLKPR = p;
-    sei();
-}
-//------------------------------------------------------
