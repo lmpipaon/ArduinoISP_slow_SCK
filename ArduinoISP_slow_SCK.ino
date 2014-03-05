@@ -20,7 +20,7 @@
 // 05 March 2014 Luis Pipaon
 // Slow SCK to program devices with very low clock (16 kHz)
 // programming mode clock frequency is lowered using the prescaler ( CLKPR )
-//
+// https://github.com/lmpipaon/ArduinoISP/
 //
 // 23 July 2011 Randall Bohn
 // -Address Arduino issue 509 :: Portability of ArduinoISP
