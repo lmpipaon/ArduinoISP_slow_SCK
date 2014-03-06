@@ -77,7 +77,7 @@ uint32_t _F_CPU =  F_CPU / PRESCALER;
 #include <util/delay_basic.h>
 
 
-void new_prescaler(uint8_t p)
+void new_prescaler(uint16_t p)
 {
     _F_CPU =  F_CPU / p;  
 
@@ -155,7 +155,7 @@ try_again:
 
 
 // change prescaler
-void clk_prescaler( uint8_t p )
+void clk_prescaler( uint16_t p )
 {
     switch(p)
     {
