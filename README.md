@@ -1,7 +1,6 @@
-ArduinoISP
-==========
-
 ArduinoISP slow SCK
+===================
+
 
 It is a modification of the sketch Arduino ISP allowing lower frequency of SCK to program microcontrollers with slow clocks, eg using the watchdog clock divided by 8.
 
