@@ -56,10 +56,10 @@
 *        PRESCALER                  MAX BAUD
 *           256                    not working ???
 *           128                       1200                  
-*            64                       2400
+*            64                       2400      // works with atmega328P Int. RC Osc. 128kHz divide by 8.
 *            32                       4800
 *            16                       9200
-*             8                      19200
+*             8                      19200      // works with atmega328P Int. RC Osc. 128kHz.
 *             4                      19200
 *             2                      38400
 *             1                      57600
@@ -67,8 +67,8 @@
 **************************************************************/
 
 //  -----------   code included to change sck    ------------------
-#define BAUD 1200       // Serial bau
-#define PRESCALER 128
+#define BAUD 2400       // Serial baud
+#define PRESCALER 64
 
 uint32_t _F_CPU =  F_CPU / PRESCALER;
 
@@ -81,9 +81,9 @@ void new_prescaler(uint16_t p)
 {
     _F_CPU =  F_CPU / p;  
 
-    clk_prescaler( p );
+    clk_prescaler( p );  // change prescaler
 
-    Serial_baud(BAUD);
+    Serial_baud(BAUD);  // keep baud with clock frequency change
 }
 
 
@@ -131,9 +131,32 @@ void Serial_baud(unsigned long baud)
   }
 #endif
 
+ 
+#if defined(UBRRH) && defined(UBRRL)
 try_again:
-  
+
   if (use_u2x) {
+    
+    UCSRA = 1 << U2X0;
+    baud_setting = (_F_CPU / 4 / baud - 1) / 2;
+  } else {
+    UCSRA = 0;
+    baud_setting = (_F_CPU / 8 / baud - 1) / 2;
+  }
+  
+  if ((baud_setting > 4095) && use_u2x)
+  {
+    use_u2x = false;
+    goto try_again;
+  }
+
+   // assign the baud_setting, a.k.a. ubbr (USART Baud Rate Register)
+  UBRRH = baud_setting >> 8;
+  UBRRL = baud_setting;
+#elif defined(UBRR0H) && defined(UBRR0L)
+try_again:
+  if (use_u2x) {
+    
     UCSR0A = 1 << U2X0;
     baud_setting = (_F_CPU / 4 / baud - 1) / 2;
   } else {
@@ -147,9 +170,15 @@ try_again:
     goto try_again;
   }
 
-  // assign the baud_setting, a.k.a. ubbr (USART Baud Rate Register)
+   // assign the baud_setting, a.k.a. ubbr (USART Baud Rate Register)
   UBRR0H = baud_setting >> 8;
-  UBRR0L = baud_setting;
+  UBRR0L = baud_setting; 
+#elif defined(USBCON)
+  // do nothing - Serial object and buffers are initialized in CDC code
+#else
+  #error no serial port defined  (port 0)
+#endif
+
 }
 
 
@@ -712,5 +741,4 @@ int avrisp() {
       Serial.print((char)STK_NOSYNC);
   }
 }
-
 
